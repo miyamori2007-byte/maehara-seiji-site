@@ -517,6 +517,44 @@ def scrape_policy(fetcher: Fetcher, page_url: str, soup: BeautifulSoup, conn) ->
 
 
 # ---------------------------------------------------------------------------
+# Manual corrections
+#
+# The official site is occasionally slower to update than real events. Each
+# entry here documents a specific known staleness, its source, and exactly
+# what it patches, so a re-scrape doesn't silently reintroduce an outdated
+# fact — and so it's obvious when an entry is safe to delete (once the
+# official site itself catches up).
+# ---------------------------------------------------------------------------
+
+def apply_manual_corrections(conn) -> None:
+    # As of this scrape (2026-08), the official profile page still lists
+    # 前原誠司 as 日本維新の会 共同代表（令和6年12月～）, but he stepped
+    # down from that role and became 顧問 (advisor) on 2025-08-19 as part
+    # of a party leadership reshuffle. Source: 日本経済新聞
+    # "日本維新の会、政調会長に斎藤アレックス氏 前原誠司・馬場伸幸氏は顧問で挙党体制へ"
+    # (2025-08-19), https://www.nikkei.com/article/DGXZQOUA1108B0R10C25A8000000/
+    row = conn.execute("SELECT current_roles FROM profile_basic WHERE id=1").fetchone()
+    if not row:
+        return
+    roles = row["current_roles"] or ""
+    old_line = "日本維新の会 共同代表（令和6年12月～）"
+    new_line = "日本維新の会 顧問（令和7年8月～）"
+    if old_line in roles:
+        conn.execute(
+            "UPDATE profile_basic SET current_roles=? WHERE id=1",
+            (roles.replace(old_line, new_line, 1),),
+        )
+        idx = conn.execute(
+            "SELECT COALESCE(MAX(sort_order), -1) + 1 AS n FROM positions WHERE category='政党'"
+        ).fetchone()["n"]
+        conn.execute(
+            "INSERT INTO positions (category, title_text, period_text, sort_order) VALUES (?,?,?,?)",
+            ("政党", "日本維新の会 共同代表", "（令和6年12月～令和7年8月）", idx),
+        )
+        print("  * applied correction: 共同代表 -> 顧問 (source: Nikkei, 2025-08-19)")
+
+
+# ---------------------------------------------------------------------------
 # Entry point
 # ---------------------------------------------------------------------------
 
@@ -536,6 +574,8 @@ def run() -> None:
             elif slug == "policy":
                 scrape_policy(fetcher, page_url, soup, conn)
             time.sleep(0.5)
+
+        apply_manual_corrections(conn)
 
     print("Done. Database written to", db.DB_PATH)
 

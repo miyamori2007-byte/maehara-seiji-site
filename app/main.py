@@ -25,6 +25,15 @@ st.set_page_config(
 
 inject_base_css()
 
+# Pages are registered unconditionally, before the password gate below, so
+# Streamlit's router still knows about the URL the visitor actually landed
+# on (e.g. a shared /profile link). Registering them only *after* the gate
+# would reset navigation to the default page on every login.
+home_page = st.Page("views/home.py", title="ホーム", url_path="home", default=True)
+profile_page = st.Page("views/profile.py", title="プロフィール", url_path="profile")
+policy_page = st.Page("views/policy.py", title="政策", url_path="policy")
+pg = st.navigation([home_page, profile_page, policy_page], position="hidden")
+
 # Optional access gate: set SITE_PASSWORD to require it before the site
 # renders. Meant for sharing a work-in-progress preview link, not real auth.
 _site_password = os.environ.get("SITE_PASSWORD")
@@ -54,12 +63,6 @@ if not db_exists():
         "`python -m scraper.scrape`"
     )
     st.stop()
-
-home_page = st.Page("views/home.py", title="ホーム", url_path="home", default=True)
-profile_page = st.Page("views/profile.py", title="プロフィール", url_path="profile")
-policy_page = st.Page("views/policy.py", title="政策", url_path="policy")
-
-pg = st.navigation([home_page, profile_page, policy_page], position="hidden")
 
 top_nav(home_page, profile_page, policy_page, pg.url_path or "home")
 pg.run()
