@@ -1,0 +1,9 @@
+services:
+  web:
+    build: .
+    ports:
+      - "8501:8501"
+    environment:
+      - SITE_PASSWORD=${SITE_PASSWORD:-}
+    volumes:
+      - ./data:/app/data
