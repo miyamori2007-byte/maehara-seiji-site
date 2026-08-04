@@ -38,8 +38,25 @@ docker compose up --build
 （`data/` はホストと共有されるので、事前に `python -m scraper.scrape` を実行してから
 起動するか、コンテナ内で再度スクレイパーを実行してください。）
 
-Cloud Run 等にデプロイする場合は `Dockerfile` をそのままビルドしてください。
-`$PORT` 環境変数を読むようになっています。
+## Cloud Run へのデプロイ
+
+現在の本番URL: https://maehara-seiji-site-1075236254526.asia-northeast1.run.app
+（GCPプロジェクト: `pelagic-plexus-504505-u8`、リージョン: `asia-northeast1`）
+
+再デプロイ（ソースから直接ビルド）:
+
+```bash
+gcloud run deploy maehara-seiji-site \
+  --source . \
+  --region asia-northeast1 \
+  --project pelagic-plexus-504505-u8 \
+  --allow-unauthenticated \
+  --set-env-vars SITE_PASSWORD=xxxx \
+  --memory 512Mi \
+  --port 8501
+```
+
+`SITE_PASSWORD` を外せばパスワードなしで公開されます。
 
 ## アクセスにパスワードをかける
 
